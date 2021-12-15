@@ -1,0 +1,74 @@
+#!/bin/bash
+ 
+flagRecur=0
+
+case $# in
+0)
+ D=".";;
+1)
+ if [ "$1" == "-r" ]; then
+     D="."
+     flagRecur=1
+ elif [ -d "$1" ]; then
+     D=$1
+ fi;;
+2)
+ if [ "$1" == "-r" ]; then
+     D=$2
+     flagRecur=1
+ elif [ "$1" != "-r" ]; then
+     echo "Wrong argument was inserted" >&2
+     exit 1
+ fi;;
+esac
+
+if [ $# -ge 3 ]; then
+    echo "The number of argument is more than 2" >&2
+    exit 1
+elif [ ${D:0:1} == "-" ]; then
+    echo "The name of directory whose first character is -" >&2
+    exit 1
+elif [ ! -d $D ]; then
+    echo "The argument is not the name of a directory" >&2
+    exit 1
+elif [ ! -r $D ]; then
+    echo "The argument is not readable" >&2
+    exit 1
+fi
+
+check_dir () {
+    find $D -mindepth 1 | grep -E "\/*[^A-Za-z\._\/-][^\/]*$|\
+\/-[^\/]*$|\
+\/\.[^\.]+[^\/]*$|\
+\/\.\.[^\/]+$|\
+[^\/]{15,}[^\/]*$" | xargs -d '\n' ls -pd > tempFile
+}
+
+check_dir_End () {
+    find $D -maxdepth 1 -mindepth 1 | grep -E "\/*[^A-Za-z\._\/-][^\/]*$|\
+\/-[^\/]*$|\
+\/\.[^\.]+[^\/]*$|\
+\/\.\.[^\/]+$|\
+[^\/]{15,}[^\/]*$" | xargs -d '\n' ls -pd > tempFile
+    find $D -maxdepth 1 -mindepth 1 | sort -f | uniq -Di |\
+ grep -E ".*" | xargs -d '\n' ls -pd >> tempFile
+}
+
+searchDirec=$D
+check_case () {
+    find $searchDirec -maxdepth 1 -mindepth 1 | sort -f |\
+ uniq -Di | grep -E ".*" | xargs -d '\n' ls -pd >> tempFile
+    subDirectories=$(find $searchDirec -maxdepth 1 -mindepth 1 -type d)    
+    for entry in $subDirectories; do
+	searchDirec=$entry
+	check_case
+    done
+}
+
+if [ $flagRecur -eq 1 ]; then
+    check_dir
+    check_case
+else
+    check_dir_End
+fi
+cat tempFile | sort -f | uniq | sed "/\.\//d"

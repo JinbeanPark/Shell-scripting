@@ -1,0 +1,37 @@
+#!/bin/bash
+
+D="$1"
+
+#Check whether the number of argument is zero or not
+if [ $# -eq 0 ]; then
+    echo "Given no operlands"
+    D="."
+elif [ $# -ge 2 ]; then
+    echo "The number of argument is more than 1" >&2
+    exit 1
+elif [ ${1:0:1} == "-" ]; then
+    echo "Single operland whose first character is -" >&2
+    exit 1
+elif [ -L "$1" ]; then
+    echo "The argument is a symbolic link" >&2
+    exit 1
+elif [ ! -d "$1" ]; then
+    echo "The argument is not the name of a directory" >&2
+    exit 1
+elif [ ! -r "$1" ]; then
+    echo "The argument is not readable" >&2
+    exit 1
+fi
+
+check_dir () {
+    find $D -maxdepth 1 -mindepth 1 | grep -E "[^\/]{15,}[^\/]*$|\
+\/-[^\/]*$|\
+\/\.[^\.]+[^\/]*$|\
+\/\.\.[^\/]+$|\
+\/*[^A-Za-z\._\/-][^\/]*$" | xargs -d '\n' ls -pd > tempFile
+    find $D -maxdepth 1 -mindepth 1 | sort -f | uniq -Di |\
+ grep -E ".*" | xargs -d '\n' ls -pd >> tempFile
+    cat tempFile | sort -f | uniq | sed "/\.\//d"
+}
+
+check_dir
